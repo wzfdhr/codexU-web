@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="aurora" data-appearance="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>codexU-web · 离线快照</title>
+<style>:root {
+  --radius: 14px;
+  --gap: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 6px 20px rgba(0,0,0,.06);
+  --font: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+/* ===== 主题（配色） ===== */
+[data-theme="aurora"]  { --accent:#0ea5a4; --accent2:#3b82f6; --accent3:#8b5cf6; --accent4:#f59e0b; }
+[data-theme="sunset"]  { --accent:#f97316; --accent2:#ec4899; --accent3:#ef4444; --accent4:#f59e0b; }
+[data-theme="forest"]  { --accent:#16a34a; --accent2:#0d9488; --accent3:#65a30d; --accent4:#ca8a04; }
+[data-theme="mono"]    { --accent:#3b82f6; --accent2:#6366f1; --accent3:#0ea5e9; --accent4:#8b5cf6; }
+[data-theme="grape"]   { --accent:#8b5cf6; --accent2:#d946ef; --accent3:#6366f1; --accent4:#ec4899; }
+[data-theme="ocean"]   { --accent:#06b6d4; --accent2:#3b82f6; --accent3:#14b8a6; --accent4:#0ea5e9; }
+
+/* ===== 外观（深浅） ===== */
+[data-appearance="light"] {
+  --bg:#f4f6fb; --panel:#ffffff; --text:#1f2937; --muted:#6b7280;
+  --border:#e5e7eb; --soft:#f1f5f9; --track:#eef2f7;
+}
+[data-appearance="dark"] {
+  --bg:#0f172a; --panel:#1b2436; --text:#e5e7eb; --muted:#94a3b8;
+  --border:#2b3650; --soft:#1e293b; --track:#243049;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; font-family:var(--font); background:var(--bg); color:var(--text);
+  -webkit-font-smoothing:antialiased; transition:background .3s, color .3s;
+}
+
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 22px; background:var(--panel); border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:10;
+}
+.brand { display:flex; align-items:center; gap:12px; }
+.logo {
+  width:40px; height:40px; border-radius:11px; display:grid; place-items:center;
+  font-size:20px; color:#fff;
+  background:linear-gradient(135deg, var(--accent), var(--accent2));
+}
+.brand h1 { font-size:18px; margin:0; letter-spacing:.3px; }
+.subtitle { margin:2px 0 0; font-size:12px; color:var(--muted); }
+
+.controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.updated { font-size:12px; color:var(--muted); margin-right:6px; }
+
+/* 额度预警条 */
+.alert-bar {
+  display:flex; align-items:center; gap:10px; padding:10px 22px; font-size:13px;
+  border-bottom:1px solid var(--border);
+}
+.alert-bar.warn { background:#fef3c7; color:#92400e; }
+.alert-bar.critical { background:#fee2e2; color:#991b1b; }
+[data-appearance="dark"] .alert-bar.warn { background:#3a2e0f; color:#fcd34d; }
+[data-appearance="dark"] .alert-bar.critical { background:#3f1212; color:#fca5a5; }
+.alert-icon { font-size:15px; }
+.alert-text b { font-weight:700; }
+
+/* 今日概览 */
+.today-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+@media (max-width:1000px){ .today-grid{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:680px){ .today-grid{grid-template-columns:repeat(2,1fr);} }
+.today-stat {
+  background:var(--soft); border:1px solid var(--border); border-radius:12px;
+  padding:12px 14px; min-width:0;
+}
+.today-stat .k { font-size:12px; color:var(--muted); }
+.today-stat .v { font-size:22px; font-weight:800; margin-top:4px; font-variant-numeric:tabular-nums; }
+.today-stat .delta { font-size:12px; margin-top:3px; font-variant-numeric:tabular-nums; }
+.delta.up { color:#dc2626; }
+.delta.down { color:#16a34a; }
+.delta.flat { color:var(--muted); }
+[data-appearance="dark"] .delta.up { color:#f87171; }
+[data-appearance="dark"] .delta.down { color:#4ade80; }
+.btn, .select {
+  border:1px solid var(--border); background:var(--soft); color:var(--text);
+  border-radius:10px; padding:7px 12px; font-size:13px; cursor:pointer; font-family:inherit;
+  transition:filter .15s, transform .05s;
+}
+.btn:hover, .select:hover { filter:brightness(1.05); }
+.btn:active { transform:translateY(1px); }
+.select { padding:7px 8px; }
+
+.grid {
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--gap);
+  padding:var(--gap); max-width:1340px; margin:0 auto;
+}
+.card {
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:16px 18px; box-shadow:var(--shadow); min-height:120px;
+}
+.span2 { grid-column:span 2; } .span3 { grid-column:span 3; }
+@media (max-width:1000px){ .grid{grid-template-columns:repeat(2,1fr);} .span2,.span3{grid-column:span 2;} }
+@media (max-width:680px){ .grid{grid-template-columns:1fr;} .span2,.span3{grid-column:span 1;} }
+
+.card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.card-head h2 { font-size:14px; margin:0; font-weight:650; }
+.tag { font-size:11px; color:var(--muted); background:var(--soft); border:1px solid var(--border); padding:2px 8px; border-radius:20px; }
+
+/* 额度 */
+.quota-wrap { display:flex; gap:26px; flex-wrap:wrap; }
+.quota-item { text-align:center; }
+.quota-item canvas { display:block; }
+.quota-label { font-size:13px; font-weight:650; margin-top:6px; }
+.quota-sub { font-size:11px; color:var(--muted); }
+#quotaTag { color:var(--accent); }
+
+/* Token 总览 */
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stat { background:var(--soft); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+.stat .k { font-size:11px; color:var(--muted); }
+.stat .v { font-size:18px; font-weight:700; margin-top:2px; }
+.wool { margin-top:12px; padding:12px; border-radius:10px; color:#fff;
+  background:linear-gradient(120deg, var(--accent), var(--accent3)); }
+.wool .k { font-size:12px; opacity:.9; }
+.wool .v { font-size:22px; font-weight:800; }
+.wool .cny { font-size:13px; opacity:.9; margin-left:8px; }
+
+/* 领导力 */
+.lead-wrap { display:flex; align-items:center; gap:16px; }
+.lead-meta { flex:1; }
+.lead-meta .tier { font-size:20px; font-weight:800; color:var(--accent); }
+.lead-meta .score { font-size:12px; color:var(--muted); margin-bottom:8px; }
+.subrow { display:flex; align-items:center; gap:8px; font-size:12px; margin:5px 0; }
+.subrow .name { width:64px; color:var(--muted); }
+.bar { flex:1; height:7px; background:var(--track); border-radius:6px; overflow:hidden; }
+.bar > i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+.subrow .num { width:30px; text-align:right; font-variant-numeric:tabular-nums; }
+
+/* 任务列表 */
+.task-list { display:flex; flex-direction:column; gap:8px; max-height:260px; overflow:auto; }
+.task {
+  display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--border);
+  border-radius:10px; background:var(--soft);
+}
+.task .dot { width:8px; height:8px; border-radius:50%; flex:none; }
+.task .dot.codex { background:var(--accent); }
+.task .dot.claude { background:var(--accent3); }
+.task .body { flex:1; min-width:0; }
+.task .t { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.task .m { font-size:11px; color:var(--muted); }
+.task .tok { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.empty { color:var(--muted); font-size:13px; padding:8px 2px; }
+
+/* 排行 */
+.rank { display:flex; flex-direction:column; gap:8px; }
+.rank .row { display:flex; align-items:center; gap:10px; font-size:13px; }
+.rank .row .name { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rank .row .val { color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.rank .row .mini { width:70px; height:6px; background:var(--track); border-radius:6px; overflow:hidden; }
+.rank .row .mini > i { display:block; height:100%; background:var(--accent); }
+
+.legend { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:10px; font-size:12px; color:var(--muted); }
+.legend .li { display:flex; align-items:center; gap:6px; }
+.legend .sw { width:10px; height:10px; border-radius:3px; }
+
+canvas { width:100%; display:block; }
+.foot { text-align:center; padding:18px; color:var(--muted); font-size:12px; display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">⚡</div>
+      <div>
+        <h1 id="appTitle">codexU-web</h1>
+        <p class="subtitle" id="appSub">Codex / Claude 用量可视化 · 纯本地</p>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="updated" id="updated">—</span>
+      <button class="btn" id="btnRefresh" title="刷新 (Ctrl+U)">↻ <span data-i18n="refresh">刷新</span></button>
+      <select id="themeSel" class="select" title="配色">
+        <option value="aurora">Aurora</option>
+        <option value="sunset">Sunset</option>
+        <option value="forest">Forest</option>
+        <option value="mono">Mono</option>
+        <option value="grape">Grape</option>
+        <option value="ocean">Ocean</option>
+      </select>
+      <button class="btn" id="btnAppearance" title="深浅色">🌓</button>
+      <button class="btn" id="btnLang" title="语言">中/EN</button>
+    </div>
+  </header>
+
+  <!-- 额度预警条：7天额度超80% 时显示 -->
+  <div class="alert-bar" id="alertBar" hidden></div>
+
+  <main class="grid">
+    <!-- 今日概览（个人使用核心） -->
+    <section class="card span3" id="cardToday">
+      <div class="card-head"><h2 data-i18n="todayTitle">今日概览</h2><span class="tag" id="todayDate"></span></div>
+      <div class="today-grid">
+        <div class="today-stat">
+          <div class="k" data-i18n="todayTokens">今日 Token</div>
+          <div class="v" id="todayTokens">—</div>
+          <div class="delta" id="todayTokensDelta"></div>
+        </div>
+        <div class="today-stat">
+          <div class="k" data-i18n="todayValue">今日花费（等效价值）</div>
+          <div class="v" id="todayValue">—</div>
+          <div class="delta" id="todayValueDelta"></div>
+        </div>
+        <div class="today-stat">
+          <div class="k" data-i18n="todayTasks">今日任务</div>
+          <div class="v" id="todayTasksN">—</div>
+          <div class="delta" id="todayProjectsN"></div>
+        </div>
+        <div class="today-stat">
+          <div class="k" data-i18n="todayActive">活跃项目</div>
+          <div class="v" id="todayProjects">—</div>
+          <div class="delta" id="todayAvg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 额度 -->
+    <section class="card span2" id="cardQuota">
+      <div class="card-head"><h2 data-i18n="quota">额度窗口</h2><span class="tag" id="quotaTag"></span></div>
+      <div class="quota-wrap" id="quotaWrap"></div>
+    </section>
+
+    <!-- Token 总览 -->
+    <section class="card" id="cardTokens">
+      <div class="card-head"><h2 data-i18n="tokens">Token 总览</h2></div>
+      <div class="stat-grid" id="tokenStats"></div>
+      <div class="wool" id="woolBox"></div>
+    </section>
+
+    <!-- AI 领导力 -->
+    <section class="card" id="cardLead">
+      <div class="card-head"><h2 data-i18n="leadership">AI 领导力</h2></div>
+      <div class="lead-wrap">
+        <canvas id="gauge" width="220" height="130"></canvas>
+        <div class="lead-meta" id="leadMeta"></div>
+      </div>
+    </section>
+
+    <!-- 今日任务 -->
+    <section class="card span2" id="cardToday">
+      <div class="card-head"><h2 data-i18n="todayTasks">今日任务</h2><span class="tag" id="todayCount"></span></div>
+      <div class="task-list" id="todayList"></div>
+    </section>
+
+    <!-- 趋势 -->
+    <section class="card span3" id="cardTrend">
+      <div class="card-head"><h2 data-i18n="trend">Token 趋势（近 180 天）</h2></div>
+      <div class="legend" id="trendLegend"></div>
+      <canvas id="area" height="240"></canvas>
+    </section>
+
+    <!-- 热力图 -->
+    <section class="card span3" id="cardHeat">
+      <div class="card-head"><h2 data-i18n="heatmap">每日活跃热力图</h2></div>
+      <canvas id="heat" height="160"></canvas>
+    </section>
+
+    <!-- 模型排行 -->
+    <section class="card" id="cardModels">
+      <div class="card-head"><h2 data-i18n="modelRank">模型排行</h2></div>
+      <div class="rank" id="modelRank"></div>
+    </section>
+
+    <!-- 项目排行 -->
+    <section class="card" id="cardProjects">
+      <div class="card-head"><h2 data-i18n="projectRank">项目排行</h2></div>
+      <div class="rank" id="projectRank"></div>
+    </section>
+
+    <!-- 近期任务 -->
+    <section class="card span2" id="cardRecent">
+      <div class="card-head"><h2 data-i18n="recentTasks">近期任务</h2></div>
+      <div class="task-list" id="recentList"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span data-i18n="privacy">所有数据均在本机解析，无任何上传。</span>
+    <span id="footMeta"></span>
+  </footer>
+
+  
+  
+
+<script>'use strict';
+// 纯 Canvas 自绘图表（无外部依赖，离线可用）。所有颜色由调用方传入以适配主题。
+(function (global) {
+  function setup(canvas, cssHeight) {
+    const dpr = global.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.parentNode.clientWidth || 600;
+    const h = cssHeight || canvas.clientHeight || 200;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    canvas.style.height = h + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  // 环形进度
+  function drawRing(canvas, percent, color) {
+    const { ctx, w, h } = setup(canvas, 120);
+    const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 12;
+    const pct = Math.max(0, Math.min(100, percent));
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 11; ctx.lineCap = 'round';
+    ctx.strokeStyle = cssVar('--track', '#eef2f7');
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    const start = -Math.PI / 2;
+    ctx.strokeStyle = color;
+    ctx.beginPath(); ctx.arc(cx, cy, r, start, start + (pct / 100) * Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = cssVar('--text', '#1f2937');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 22px ' + cssVar('--font', 'sans-serif');
+    ctx.fillText(Math.round(pct) + '%', cx, cy - 4);
+    ctx.fillStyle = cssVar('--muted', '#6b7280');
+    ctx.font = '11px ' + cssVar('--font', 'sans-serif');
+    ctx.fillText('used', cx, cy + 16);
+  }
+
+  // 半圆仪表
+  function drawGauge(canvas, score, color) {
+    const { ctx, w, h } = setup(canvas, 130);
+    const cx = w / 2, cy = h - 14, r = Math.min(w / 2, h) - 16;
+    const s = Math.max(0, Math.min(100, score));
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 12; ctx.lineCap = 'round';
+    ctx.strokeStyle = cssVar('--track', '#243049');
+    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI); ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + (s / 100) * Math.PI); ctx.stroke();
+    ctx.fillStyle = cssVar('--text', '#e5e7eb');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '800 28px ' + cssVar('--font', 'sans-serif');
+    ctx.fillText(Math.round(s), cx, cy - 18);
+    ctx.fillStyle = cssVar('--muted', '#94a3b8');
+    ctx.font = '10px ' + cssVar('--font', 'sans-serif');
+    ctx.fillText('0', cx - r + 6, cy + 12);
+    ctx.fillText('100', cx + r - 12, cy + 12);
+  }
+
+  // 堆叠面积图
+  function drawArea(canvas, dates, series, colors) {
+    const { ctx, w, h } = setup(canvas, 240);
+    ctx.clearRect(0, 0, w, h);
+    const padL = 8, padR = 8, padT = 10, padB = 22;
+    const cw = w - padL - padR, ch = h - padT - padB;
+    const n = dates.length;
+    if (!n) return;
+    const totals = new Array(n).fill(0);
+    series.forEach((s) => { for (let i = 0; i < n; i++) totals[i] += (s.data[i] || 0); });
+    const max = Math.max(1, ...totals);
+    const x = (i) => padL + (i / (n - 1)) * cw;
+    const y = (v) => padT + ch - (v / max) * ch;
+    // 堆叠
+    const cum = new Array(n).fill(0);
+    series.forEach((s, si) => {
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) { const v = cum[i] + (s.data[i] || 0); const xx = x(i), yy = y(v); i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
+      for (let i = n - 1; i >= 0; i--) { const v = cum[i]; ctx.lineTo(x(i), y(v)); }
+      ctx.closePath();
+      const c = colors[si % colors.length];
+      ctx.fillStyle = hexA(c, 0.78);
+      ctx.fill();
+      for (let i = 0; i < n; i++) cum[i] += (s.data[i] || 0);
+    });
+    // 月份网格
+    ctx.fillStyle = cssVar('--muted', '#94a3b8');
+    ctx.font = '10px ' + cssVar('--font', 'sans-serif'); ctx.textAlign = 'center';
+    let lastM = '';
+    for (let i = 0; i < n; i += Math.ceil(n / 8)) {
+      const d = dates[i]; const m = d.slice(5);
+      if (m !== lastM) { ctx.fillText(m, x(i), h - 6); lastM = m; }
+    }
+  }
+
+  // 日历热力图（最近 ~26 周）
+  function drawHeatmap(canvas, dailyArr) {
+    const { ctx, w, h } = setup(canvas, 160);
+    ctx.clearRect(0, 0, w, h);
+    if (!dailyArr.length) return;
+    const cell = Math.max(8, Math.min(16, Math.floor((w - 10) / 27)));
+    const gap = 3;
+    const max = Math.max(1, ...dailyArr.map((d) => d.v));
+    dailyArr.forEach((d, i) => {
+      const col = Math.floor(i / 7), row = i % 7;
+      const px = 6 + col * (cell + gap), py = 6 + row * (cell + gap);
+      const t = Math.log(1 + d.v) / Math.log(1 + max);
+      ctx.fillStyle = t < 0.02 ? cssVar('--track', '#243049') : mixAccent(t);
+      roundRect(ctx, px, py, cell, cell, 2); ctx.fill();
+    });
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function hexA(hex, a) {
+    const c = hex.replace('#', '');
+    const n = c.length === 3 ? c.split('').map((x) => x + x).join('') : c;
+    const r = parseInt(n.slice(0, 2), 16), g = parseInt(n.slice(2, 4), 16), b = parseInt(n.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function mixAccent(t) {
+    const a = cssVar('--accent', '#0ea5a4'), b = cssVar('--accent2', '#3b82f6');
+    const pa = parse(a), pb = parse(b);
+    const r = Math.round(pa[0] + (pb[0] - pa[0]) * t);
+    const g = Math.round(pa[1] + (pb[1] - pa[1]) * t);
+    const bl = Math.round(pa[2] + (pb[2] - pa[2]) * t);
+    return `rgb(${r},${g},${bl})`;
+  }
+  function parse(hex) {
+    const c = hex.replace('#', '');
+    const n = c.length === 3 ? c.split('').map((x) => x + x).join('') : c;
+    return [parseInt(n.slice(0, 2), 16), parseInt(n.slice(2, 4), 16), parseInt(n.slice(4, 6), 16)];
+  }
+
+  function fmt(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  global.Charts = { drawRing, drawGauge, drawArea, drawHeatmap, fmt, cssVar };
+})(window);
+</script>
+<script>window.__BOOTSTRAP__ = {"generatedAt":1785734156674,"sources":{"codex":{"threadCount":65,"tokens":{"total":10760236124,"input":10760236124,"output":0,"cached":0,"cacheWrite":0,"reasoning":0}},"claude":{"fileCount":8,"tokens":{"total":73654418,"input":287227,"cached":57940181,"cacheWrite":15093017,"output":333993,"reasoning":0}}},"tokens":{"total":10833890542,"input":10760523351,"cached":57940181,"cacheWrite":15093017,"output":333993,"reasoning":0},"value":{"usd":46204.88,"cny":332675.14},"today":{"date":"2026-08-03","tokens":27083369,"yesterdayTokens":0,"usd":42.2,"cny":303.85,"yesterdayUsd":0,"tasks":2,"projects":1},"quota":{"windows":[{"label":"5 小时额度","windowMinutes":300,"usedPercent":29,"resetsAt":1782212530000,"limitName":null},{"label":"7 天额度","windowMinutes":10080,"usedPercent":93,"resetsAt":1782665009000,"limitName":null}],"estimated":false},"leadership":{"score":64,"tier":"首席调度","subscores":{"consistency":29,"scale":52,"concurrency":100,"breadth":100},"details":{"activeDays":7,"totalSessions":31,"totalTokens28":3269313527,"peakPerDay":13,"spawnCount":27,"modelDiversity":9,"windowDays":28}},"tasks":{"today":[{"id":"da7052dd-2959-4bb0-991f-535c9958049a","source":"claude","project":"E//my/game/HereStandsDemon/SubduingGate","title":"E//my/game/HereStandsDemon/SubduingGate 会话","model":"claude-opus-4-8","tokens":50222748,"updatedAt":1785726284917,"isToday":true},{"id":"10532b02-ab33-47e0-bc66-dad566fa76a8","source":"claude","project":"E//my/game/HereStandsDemon/SubduingGate","title":"E//my/game/HereStandsDemon/SubduingGate 会话","model":"claude-opus-4-8","tokens":108052,"updatedAt":1785718914169,"isToday":true}],"recent":[{"id":"da7052dd-2959-4bb0-991f-535c9958049a","source":"claude","project":"E//my/game/HereStandsDemon/SubduingGate","title":"E//my/game/HereStandsDemon/SubduingGate 会话","model":"claude-opus-4-8","tokens":50222748,"updatedAt":1785726284917,"isToday":true},{"id":"10532b02-ab33-47e0-bc66-dad566fa76a8","source":"claude","project":"E//my/game/HereStandsDemon/SubduingGate","title":"E//my/game/HereStandsDemon/SubduingGate 会话","model":"claude-opus-4-8","tokens":108052,"updatedAt":1785718914169,"isToday":true},{"source":"codex","id":"019fab9e-d3cd-7c71-a117-671eda1d6d77","title":"$generate2dmap 这个skill地址是多少","model":"gpt-5.6-sol","project":"HereStandsDemon-SubduingGate","cwd":"\\\\?\\E:\\my game\\HereStandsDemon-SubduingGate","tokensUsed":325996,"tokens":325996,"updatedAt":1785291173108,"createdAt":1785290740686,"isToday":false},{"id":"4faff683-a254-4315-b4e6-a43f18391634","source":"claude","project":"E//my/game/HereStandsDemon/SubduingGate","title":"E//my/game/HereStandsDemon/SubduingGate 会话","model":"claude-opus-4-8","tokens":22080068,"updatedAt":1784875913344,"isToday":false},{"source":"codex","id":"019f929b-bae2-75c0-8e9b-f10451e7a38a","title":"generate2dsprite 这个的无内建 image_gen、无 openai SDK、无 OPENAI_API…","model":"gpt-5.6-sol","project":"HereStandsDemon-SubduingGate","cwd":"\\\\?\\E:\\my game\\HereStandsDemon-SubduingGate","tokensUsed":412305,"tokens":412305,"updatedAt":1784871503327,"createdAt":1784871107298,"isToday":false},{"id":"a1aa4ff3-28a0-417a-9341-3b73d2a380cd","source":"claude","project":"E//my/game/godot/oriental/legion","title":"E//my/game/godot/oriental/legion 会话","model":"claude-opus-4-8","tokens":901013,"updatedAt":1784858422833,"isToday":false},{"id":"edcd313c-a595-48fa-9351-96a9d3e30586","source":"claude","project":"E//my/game/godot/oriental/legion","title":"E//my/game/godot/oriental/legion 会话","model":"claude-sonnet-4-6","tokens":147379,"updatedAt":1784857711013,"isToday":false},{"source":"codex","id":"019eab30-4b42-7743-9264-684205201480","title":"全局安装 code-index mcp","model":"gpt-5.6-luna","project":"code-index-mcp","cwd":"\\\\?\\C:\\Users\\Administrator\\Documents\\Codex\\2026-06-09\\code-index-mcp","tokensUsed":43881805,"tokens":43881805,"updatedAt":1784857163366,"createdAt":1780988529474,"isToday":false},{"id":"b41dbb41-d5cd-4b2b-b919-02082dd1db14","source":"claude","project":"C//Users/Administrator","title":"C//Users/Administrator 会话","model":"claude-opus-4-8","tokens":40348,"updatedAt":1784855225658,"isToday":false},{"id":"dbd5b0b9-5d1f-42d8-8611-2edf5c3e3d6e","source":"claude","project":"C//Users/Administrator/Documents/Codex/2026/06/09/code/index/mcp","title":"C//Users/Administrator/Documents/Codex/2026/06/09/code/index/mcp 会话","model":"claude-opus-4-8","tokens":34172,"updatedAt":1784855197810,"isToday":false},{"id":"2e61d144-0828-4f6e-9334-39a3107167f2","source":"claude","project":"C//Users/Administrator","title":"C//Users/Administrator 会话","model":"deepseek-v4-pro","tokens":120638,"updatedAt":1784854605626,"isToday":false},{"source":"codex","id":"019f6a20-88c2-7472-9d6d-d60218b6d448","title":"请你根据ui设计文档 总结需要的资源有哪些","model":"gpt-5.6-sol","project":"HereStandsDemon-SubduingGate","cwd":"\\\\?\\E:\\my game\\HereStandsDemon-SubduingGate","tokensUsed":26785498,"tokens":26785498,"updatedAt":1784200094105,"createdAt":1784191944898,"isToday":false},{"source":"codex","id":"019f69a5-44c9-7453-8708-94a78a83cc06","title":"请你读取项目下策划文档 给我一个应该装哪些skill的推荐","model":"gpt-5.6-sol","project":"HereStandsDemon-SubduingGate","cwd":"\\\\?\\E:\\my game\\HereStandsDemon-SubduingGate","tokensUsed":70193951,"tokens":70193951,"updatedAt":1784196623662,"createdAt":1784183866569,"isToday":false},{"source":"codex","id":"019f6a44-087c-72b3-8132-167daba4ae4b","title":"请你读取项目下策划文档 给我一个应该装哪些skill的推荐","model":"gpt-5.6-sol","project":"HereStandsDemon-SubduingGate","cwd":"\\\\?\\E:\\my game\\HereStandsDemon-SubduingGate","tokensUsed":52100688,"tokens":52100688,"updatedAt":1784194967479,"createdAt":1784194271356,"isToday":false},{"source":"codex","id":"019f6a43-925e-7fa2-bcc3-ff8f362f421a","title":"请你读取项目下策划文档 给我一个应该装哪些skill的推荐","model":"gpt-5.6-sol","project":"HereStandsDemon-SubduingGate","cwd":"\\\\?\\E:\\my game\\HereStandsDemon-SubduingGate","tokensUsed":51269496,"tokens":51269496,"updatedAt":1784194845421,"createdAt":1784194241118,"isToday":false},{"source":"codex","id":"019ef27f-2118-7a81-91ea-b9a3c24a4dc0","title":"[@product-design](plugin://product-design@openai-curated-remote) Help me get started","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":629905626,"tokens":629905626,"updatedAt":1784182877047,"createdAt":1782184878361,"isToday":false},{"source":"codex","id":"019efd74-8827-7cd1-939f-235d57c3a671","title":"/goal @product-design @superpowers @codebase-memory-mcp 执行规则如下 \r\n1.默认用中文和用户沟通。\r\n2.先利用当前项目文档，不要假设它是空项目。\r\n3.需要角色分工时，用“角色视角\"模拟，而不是声称真的启动了ClaudeCode subagent。\r\n4.多角色评审时，按角色分段输出，例如\"创意总监视角”\"技术总监视角”\"制作人视角”。对重大设计改动、跨文件重组、里程碑推进，先给用户清晰选项和影响，再动手。\r\n5.对用户明确要求的具体改动，直接执行;遇到高风险或信息不足再提问。\r\n\r\n接下来请你按照以下目标进行 \r\n\r\n一.请你通过操作mcp控制godot 如果没有通 请你调通后在操作\r\n\r\n二. 你根据技术文档 结合项目实际情况 按照阶段任务进行后续开发工作 并且每一阶段的开发工作完成后先进行复测 在传到github上进行留存 \n\r\n三.严格按照任务清单进行工作，不允许私自操作其他的文件；如果涉及到不确定的内容或者认为冲突的地方，需我同意后才可以进行，且申请我同意时，你需要说明影响的文件、影响范围、修改目的、修改目标等；如果涉及到我还没回复的内容 请你等我回复后再往下执行不要自己私自去缩小范围\r\n\r\n四.正式数值模拟必须根据设计文档/中已经定义的所有系统和数值做真实推演。用户给出的期望慨率只用于最终款值文档里的比对和运标判断，不能作为生成概率或调参目标反推结果。\r\n如果结果偏高目标，只能修改正式策划设计里 的系统数值，然后重新跑真实系统模拟。除非用户直接要求，否则不得修改期望概率或验收线。","model":"gpt-5.6-terra","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":965328711,"tokens":965328711,"updatedAt":1784026899393,"createdAt":1782368733223,"isToday":false},{"source":"codex","id":"019f5f87-5ab2-7643-9f74-85a3b4cd615a","title":"在 E:\\my game\\godot\\oriental_legion 只负责 binding_chain_guard…","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":7817650,"tokens":7817650,"updatedAt":1784020066093,"createdAt":1784014137995,"isToday":false},{"source":"codex","id":"019f5f87-9af0-75d3-b529-7a2c4d3a826d","title":"在 E:\\my game\\godot\\oriental_legion 只负责 minor_demon 与 swift_…","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":4379258,"tokens":4379258,"updatedAt":1784019720303,"createdAt":1784014155401,"isToday":false},{"source":"codex","id":"019f5f37-b0d6-7130-88cd-0fc19f02c317","title":"在项目 E:\\my game\\godot\\oriental_legion 中，只负责以下资产目录，勿改 manifes…","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":6931297,"tokens":6931297,"updatedAt":1784013237811,"createdAt":1784008918127,"isToday":false},{"source":"codex","id":"019f5f37-7094-7661-981a-8783d31cf218","title":"在项目 E:\\my game\\godot\\oriental_legion 中，只负责以下资产目录，勿改 manifes…","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":6483449,"tokens":6483449,"updatedAt":1784013029890,"createdAt":1784008901669,"isToday":false},{"source":"codex","id":"019f5f02-e19b-7332-aa86-5cf299051a68","title":"请只读检查 C:\\Users\\Administrator.cc-switch\\skills\\generate2dspr…","model":"gpt-5.6-terra","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":586293256,"tokens":586293256,"updatedAt":1784005646850,"createdAt":1784005452220,"isToday":false},{"source":"codex","id":"019f5f02-64ca-7be2-96de-08c34ab9fdcb","title":"请只读审查 E:\\my game\\godot\\oriental_legion\\data\\visual\\stage_a_…","model":"gpt-5.6-terra","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":586051856,"tokens":586051856,"updatedAt":1784005632552,"createdAt":1784005423884,"isToday":false},{"source":"codex","id":"019f5e9e-b1fb-7a50-b049-aac0afbd6647","title":"只做只读根因审计，不要修改文件。范围限定 E:\\my game\\godot\\oriental_legion\\scene…","model":"gpt-5.6-terra","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":38510,"tokens":38510,"updatedAt":1784000000194,"createdAt":1783998891398,"isToday":false},{"source":"codex","id":"019f5e9e-f23d-7b51-a389-cdce7121c25e","title":"只做只读根因审计，不要修改文件。范围限定 E:\\my game\\godot\\oriental_legion\\scene…","model":"gpt-5.6-terra","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":1060139,"tokens":1060139,"updatedAt":1783999420014,"createdAt":1783998907863,"isToday":false},{"source":"codex","id":"019f5e31-4063-7031-8069-638ce175215e","title":"新文档已经更新 请你依据新文档 对比旧的文档 更新 技术文档 和出一个差异修改方案@superpowers","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":7496469,"tokens":7496469,"updatedAt":1783992948455,"createdAt":1783991715097,"isToday":false},{"source":"codex","id":"019f5e35-0896-79a3-9d58-46236aa8dc97","title":"新文档已经更新 请你依据新文档 对比旧的文档 更新 技术文档 和出一个差异修改方案[@superpowers](plugin://superpowers@openai-curated-remote)","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":943924,"tokens":943924,"updatedAt":1783992849304,"createdAt":1783991961750,"isToday":false},{"source":"codex","id":"019f5e34-a39e-73e0-bca3-d2251ed8f410","title":"新文档已经更新 请你依据新文档 对比旧的文档 更新 技术文档 和出一个差异修改方案[@superpowers](plugin://superpowers@openai-curated-remote)","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":842297,"tokens":842297,"updatedAt":1783992781305,"createdAt":1783991935902,"isToday":false},{"source":"codex","id":"019f5e34-2eaf-7771-9f4c-c1d2c937a201","title":"新文档已经更新 请你依据新文档 对比旧的文档 更新 技术文档 和出一个差异修改方案[@superpowers](plugin://superpowers@openai-curated-remote)","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":566564,"tokens":566564,"updatedAt":1783992230778,"createdAt":1783991905967,"isToday":false},{"source":"codex","id":"019f5154-0209-7c43-ab0e-ad583a4926b3","title":"你是不是给我改的电脑出问题了啊 为什么我现在电脑打幻兽帕鲁 三角洲这些 玩着玩着就重启了？","model":"gpt-5.6-sol","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":94675,"tokens":94675,"updatedAt":1783776231990,"createdAt":1783775892885,"isToday":false},{"source":"codex","id":"019f02a2-ce65-7680-bd02-32c744fe1b69","title":"幻想军团_程序美术交接包_26.6.24.7 中 选择关卡页面怎么设计的","model":"gpt-5.5","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":146455689,"tokens":146455689,"updatedAt":1783330833613,"createdAt":1782455651941,"isToday":false},{"source":"codex","id":"019eca1d-0538-7e20-b9e7-e869f66fcc7e","title":"执行规则如下\r\n1.默认用中文和用户沟通。\r\n2.先利用当前项目文档，不要假设它是空项目。\r\n3.需要角色分工时，用“角色视角\"模拟，而不是声称真的启动了ClaudeCode subagent。\r\n4.多角色评审时，按角色分段输出，例如\"创意总监视角”\"技术总监视角”\"制作人视角”。对重大设计改动、跨文件重组、里程碑推进，先给用户清晰选项和影响，再动手。\r\n5.对用户明确要求的具体改动，直接执行;遇到高风险或信息不足再提问。\r\n\r\n当前项目优先路线\r\n当前工作室只服务于\"代码游戏功能实现”。请你根据全职炒股_完整设计文档_26.6.11.3文档 和 设计文档目录 对比目前的进度 先出一份继续需要优化的内容和后续任务清单\r\n\r\n接下来请你按照以下目标进行 \r\n\r\n一.请你通过操作mcp控制unity操作  并且优先做设计文档文件夹下  16_开发测试工具 文档的功能 因为该工具会帮助我和你进行测试验证\r\n\r\n二. 请你根据出的任务清单 继续优化和完善功能 \r\n\r\n三.严格按照任务清单进行工作，不允许私自操作其他的文件；如果涉及到不确定的内容或者认为冲突的地方，需我同意后才可以进行，且申请我同意时，你需要说明影响的文件、影响范围、修改目的、修改目标等；docs文件夹下放协作文档和任务清单日志 可以分开文件夹 并且以命名要详细点 例如 协作文档 1.0这样 执行任务前去查看是否有新增协作文档或协作文档是否存在更新 每个任务执行后需要在该文件夹内新增本次修改的协同文档 当前工程为多人协同，若你当前需要修改的内容涉及到协同文档中的内容则需找我确认该内容是否修改且需携带完成的方案以及该方案影响的范围、影响的功能等\r\n\r\n四.正式数值模拟必须根据设计文档/中已经定义的所有系统和数值做真实推演。用户给出的期望慨率只用于最终款值文档里的比对和运标判断，不能作为生成概率或调参目标反推结果。\r\n如果结果偏高目标，只能修改正式策划设计里的系统数值，然后重新跑真实系统模拟。除非用户直接要求，否则不得修改期望概率或验收线。\r\n\r\n五.开发完成后， 删除无用的代码和文件  [@superpowers](plugin://superpowers@openai-curated-remote)","model":"gpt-5.5","project":"games","cwd":"\\\\?\\E:\\my game\\games","tokensUsed":3526501031,"tokens":3526501031,"updatedAt":1782871351358,"createdAt":1781507362877,"isToday":false},{"source":"codex","id":"019edb3f-7ddf-7770-9676-b8594d53d7c9","title":"[$superpowers:brainstorming](C:\\\\Users\\\\Administrator\\\\.codex\\\\plugins\\\\cache\\\\openai-curated-remote\\\\superpowers\\\\5.1.3\\\\skills\\\\brainstorming\\\\SKILL.md)  请你根据文档 设计游戏主界面ui情况 我会给gpt images2 说 你负责设计一套提示词","model":"gpt-5.5","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":27529879,"tokens":27529879,"updatedAt":1782265590407,"createdAt":1781794831840,"isToday":false},{"source":"codex","id":"019ec122-7133-7f50-9d44-483e2b546b93","title":"/goal 请你继续执行会话 id如下 019eaf01-7646-70e0-8054-932c1cf27171  同意方案A21f2-DayHandlingRuleDryParseManifestRecord  执行规则如下\r\n1.默认用中文和用户沟通。\r\n2.先利用当前项目文档，不要假设它是空项目。\r\n3.需要角色分工时，用“角色视角\"模拟，而不是声称真的启动了ClaudeCode subagent。\r\n4.多角色评审时，按角色分段输出，例如\"创意总监视角”\"技术总监视角”\"制作人视角”。对重大设计改动、跨文件重组、里程碑推进，先给用户清晰选项和影响，再动手。\r\n5.对用户明确要求的具体改动，直接执行;遇到高风险或信息不足再提问。\r\n\r\n当前项目优先路线\r\n当前工作室只服务于\"代码游戏功能实现”。优先按\"最新设计文档接入\"处理:\r\n接下来请你按照以下目标进行 \r\n\r\n一.请你通过操作mcp控制unity 看现在每个页上 字位置不合理的地方 进行调整\r\n\r\n二. 请你读取 新版技术文档_基于全职炒股_完整设计_26.6.10.4 按照列出的 非家庭相关功能补充修改打磨清单 任务清单进行后续任务 如遇到没有的ui 请你列举出来 并且请你先完成对应的功能出来 样式可以后续更改\r\n\r\n三.严格按照任务清单进行工作，不允许私自操作其他的文件，因为是协作项目，动其他文件会影响协作者；如果涉及到必须修改的，需我同意后才可修改，且申请我同意时，你需要说明影响的文件、影响范围、修改目的、修改目标等；\r\n\r\n四.正式数值模拟必须根据设计文档/中已经定义的所有系统和数值做真实推演。用户给出的期望慨率只用于最终款值文档里的比对和运标判断，不能作为生成概率或调参目标反推结果。\r\n如果结果偏高目标，只能修改正式策划设计里的系统数值，然后重新跑真实系统模拟。除非用户直接要求，否则不得修改期望概率或验收线。\r\n\r\n五.开发完成后，跑一次流程 删除无用的代码和文件 按照验收标准，按照 验收标准与测试用例_基于新版业务与技术文档  进行验收测试，如测试不通过则重新进行流程直到通过验收标准为主  并且制作一个协作文档记录了修改内容 并且请你列出来后续需要的ui资源和需要我支持的内容 上面已经到了a16 你看一下@superpowers","model":"gpt-5.5","project":"games","cwd":"\\\\?\\E:\\my game\\games","tokensUsed":441642620,"tokens":441642620,"updatedAt":1782200298028,"createdAt":1781356725450,"isToday":false},{"source":"codex","id":"019eda0e-a7bc-7482-9025-bf0c23a00ca7","title":"019ed9f5-4318-72d2-8540-846a1dbb4332 接着执行这个会话[@superpowers](plugin://superpowers@openai-curated-remote)","model":"gpt-5.5","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":237855329,"tokens":237855329,"updatedAt":1782101115223,"createdAt":1781774854076,"isToday":false},{"source":"codex","id":"019ede7f-adb7-74f1-b224-c1960a1c0509","title":"你是最终验收复核员。请在 `E:\\my game\\godot\\oriental_legion` 只读检查，不修改文件。重点复核本轮新增/修改点是否满足 A 阶段验收：1) 命令失败文案为中文；2) 鼠标滚轮两档缩放且不改变 GameState；3) `dump_game_state()` 字段满足 QA-TECH-004/005；4) HUD 波次预告；5) 结算顺序记录；6) 可视验收脚本包含投送结算截图；7) README/验收报告不乱码。请输出阻断问题或明确“未发现阻断项”，附相关文件路径。不要运行耗时命令，不要改文件，不要回滚变更。","model":"gpt-5.5","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":506743,"tokens":506743,"updatedAt":1781849617883,"createdAt":1781849370039,"isToday":false},{"source":"codex","id":"019ede71-4b6d-7fc3-8b81-754fa610e7df","title":"你是 A 阶段验收差距审计员。请在 `E:\\my game\\godot\\oriental_legion` 中只读检查，不要修改文件。依据这些文档：`docs/specs/2026-06-18-oriental-legion-stage-a-acceptance-criteria.md`、`docs/plans/幻想军团_完整设计文档_26.6.18.1.md`、`docs/plans/2026-06-18-oriental-legion-stage-a-task-checklist.md`。目标：列出当前实现/测试相对 A 阶段验收仍可能缺失的条目，按 QA ID 或文档章节引用，指出相关代码/测试文件路径。重点看：UI 中文是否乱码、波次预告、胜负路线、投送/法宝/快捷键、DumpGameState、鼠标滚轮缩放、人工验收证据。只输出高信号清单和建议优先级。注意：你不是唯一工作者，不要改文件，不要回滚任何变更。","model":"gpt-5.5","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":1568041,"tokens":1568041,"updatedAt":1781848834290,"createdAt":1781848427373,"isToday":false},{"source":"codex","id":"019edb78-2805-7ea0-91c7-a3eb03b70dc0","title":"我想做一个网站 功能呢就是 想把数据 知识库还有智能体放到一个干净的工作台里面 作为每个人自己的知识库 比如说 我访问codex的时候提问 codex可以从这个知识库里面去获取内容 你觉得可以实现吗 [$superpowers:brainstorming](C:\\\\Users\\\\Administrator\\\\.codex\\\\plugins\\\\cache\\\\openai-curated-remote\\\\superpowers\\\\5.1.3\\\\skills\\\\brainstorming\\\\SKILL.md)","model":"gpt-5.5","project":"godot","cwd":"\\\\?\\E:\\my game\\godot","tokensUsed":1305922,"tokens":1305922,"updatedAt":1781830114269,"createdAt":1781798545414,"isToday":false},{"source":"codex","id":"019ed9f5-4318-72d2-8540-846a1dbb4332","title":"参考文档 开始进行A阶段开发任务 执行规则如下\r\n1.默认用中文和用户沟通。\r\n2.先利用当前项目文档，不要假设它是空项目。\r\n3.需要角色分工时，用“角色视角\"模拟 \n4.多角色评审时，按角色分段输出，例如\"创意总监视角”\"技术总监视角”\"制作人视角”。对重大设计改动、跨文件重组、里程碑推进，先给用户清晰选项和影响，再动手。\r\n5.对用户明确要求的具体改动，直接执行;遇到高风险或信息不足再提问。\r\n\r\n\r\n\r\n接下来请你按照以下目标进行 \r\n\r\n\n\r\n二,严格按照任务清单进行工作，不允许私自操作其他的文件；如果涉及到不确定的内容或者认为冲突的地方，需我同意后才可以进行，且申请我同意时，你需要说明影响的文件、影响范围、修改目的、修改目标等； \n\r\n三.正式数值模拟必须根据设计文档/中已经定义的所有系统和数值做真实推演。用户给出的期望慨率只用于最终款值文档里的比对和运标判断，不能作为生成概率或调参目标反推结果。 \n如果结果偏高目标，只能修改正式策划设计里的系统数值，然后重新跑真实系统模拟。除非用户直接要求，否则不得修改期望概率或验收线。\r\n\r\n四.开发完成后，跑一次流程 删除无用的代码和文件  [@superpowers](plugin://superpowers@openai-curated-remote)","model":"gpt-5.5","project":"games","cwd":"\\\\?\\E:\\my game\\games","tokensUsed":4022402,"tokens":4022402,"updatedAt":1781775010497,"createdAt":1781773189912,"isToday":false},{"source":"codex","id":"019ed9fb-eac3-78a2-8519-6e2f91f2deb5","title":"请用中文执行只读探索，不要修改任何文件。项目路径：E:\\my game\\godot\\oriental_legion。用户要求参考以下文档开始 A 阶段开发：\n- E:\\my game\\godot\\oriental_legion\\docs\\specs\\2026-06-18-oriental-fantasy-legion-td-design.md\n- E:\\my game\\godot\\oriental_legion\\docs\\plans\\2026-06-18-oriental-fantasy-legion-td-stage-a.md\n\n目标：\n1. 总结 A 阶段计划中的任务列表、验收标准、涉及文件。\n2. 梳理 Godot 项目现有结构、关键脚本/场景/测试目录。\n3. 找出当前项目可用的测试/运行命令（Godot 版本、是否有 GUT/内置测试、project.godot 信息）。\n4. 检查是否存在 Godot MCP 配置或可由当前环境控制 Godot 的迹象；如果没有，明确说明。\n\n约束：只读探索；不要大范围贴文件内容；输出高信号摘要，包含具体路径。","model":"gpt-5.5","project":"games","cwd":"\\\\?\\E:\\my game\\games","tokensUsed":270436,"tokens":270436,"updatedAt":1781773880115,"createdAt":1781773626051,"isToday":false}]},"trends":{"daily":[{"date":"2026-02-05","tokens":0},{"date":"2026-02-06","tokens":0},{"date":"2026-02-07","tokens":0},{"date":"2026-02-08","tokens":0},{"date":"2026-02-09","tokens":0},{"date":"2026-02-10","tokens":0},{"date":"2026-02-11","tokens":0},{"date":"2026-02-12","tokens":0},{"date":"2026-02-13","tokens":0},{"date":"2026-02-14","tokens":0},{"date":"2026-02-15","tokens":0},{"date":"2026-02-16","tokens":0},{"date":"2026-02-17","tokens":0},{"date":"2026-02-18","tokens":0},{"date":"2026-02-19","tokens":0},{"date":"2026-02-20","tokens":0},{"date":"2026-02-21","tokens":0},{"date":"2026-02-22","tokens":0},{"date":"2026-02-23","tokens":0},{"date":"2026-02-24","tokens":0},{"date":"2026-02-25","tokens":0},{"date":"2026-02-26","tokens":0},{"date":"2026-02-27","tokens":0},{"date":"2026-02-28","tokens":0},{"date":"2026-03-01","tokens":0},{"date":"2026-03-02","tokens":0},{"date":"2026-03-03","tokens":0},{"date":"2026-03-04","tokens":0},{"date":"2026-03-05","tokens":0},{"date":"2026-03-06","tokens":0},{"date":"2026-03-07","tokens":0},{"date":"2026-03-08","tokens":0},{"date":"2026-03-09","tokens":0},{"date":"2026-03-10","tokens":0},{"date":"2026-03-11","tokens":0},{"date":"2026-03-12","tokens":0},{"date":"2026-03-13","tokens":0},{"date":"2026-03-14","tokens":0},{"date":"2026-03-15","tokens":0},{"date":"2026-03-16","tokens":0},{"date":"2026-03-17","tokens":0},{"date":"2026-03-18","tokens":0},{"date":"2026-03-19","tokens":0},{"date":"2026-03-20","tokens":0},{"date":"2026-03-21","tokens":0},{"date":"2026-03-22","tokens":0},{"date":"2026-03-23","tokens":0},{"date":"2026-03-24","tokens":0},{"date":"2026-03-25","tokens":0},{"date":"2026-03-26","tokens":0},{"date":"2026-03-27","tokens":0},{"date":"2026-03-28","tokens":0},{"date":"2026-03-29","tokens":0},{"date":"2026-03-30","tokens":0},{"date":"2026-03-31","tokens":0},{"date":"2026-04-01","tokens":0},{"date":"2026-04-02","tokens":0},{"date":"2026-04-03","tokens":0},{"date":"2026-04-04","tokens":0},{"date":"2026-04-05","tokens":0},{"date":"2026-04-06","tokens":0},{"date":"2026-04-07","tokens":0},{"date":"2026-04-08","tokens":0},{"date":"2026-04-09","tokens":0},{"date":"2026-04-10","tokens":0},{"date":"2026-04-11","tokens":0},{"date":"2026-04-12","tokens":0},{"date":"2026-04-13","tokens":0},{"date":"2026-04-14","tokens":0},{"date":"2026-04-15","tokens":0},{"date":"2026-04-16","tokens":0},{"date":"2026-04-17","tokens":0},{"date":"2026-04-18","tokens":0},{"date":"2026-04-19","tokens":0},{"date":"2026-04-20","tokens":0},{"date":"2026-04-21","tokens":0},{"date":"2026-04-22","tokens":0},{"date":"2026-04-23","tokens":0},{"date":"2026-04-24","tokens":0},{"date":"2026-04-25","tokens":0},{"date":"2026-04-26","tokens":0},{"date":"2026-04-27","tokens":0},{"date":"2026-04-28","tokens":0},{"date":"2026-04-29","tokens":0},{"date":"2026-04-30","tokens":0},{"date":"2026-05-01","tokens":0},{"date":"2026-05-02","tokens":0},{"date":"2026-05-03","tokens":0},{"date":"2026-05-04","tokens":0},{"date":"2026-05-05","tokens":0},{"date":"2026-05-06","tokens":0},{"date":"2026-05-07","tokens":0},{"date":"2026-05-08","tokens":0},{"date":"2026-05-09","tokens":0},{"date":"2026-05-10","tokens":0},{"date":"2026-05-11","tokens":0},{"date":"2026-05-12","tokens":0},{"date":"2026-05-13","tokens":0},{"date":"2026-05-14","tokens":0},{"date":"2026-05-15","tokens":0},{"date":"2026-05-16","tokens":0},{"date":"2026-05-17","tokens":0},{"date":"2026-05-18","tokens":0},{"date":"2026-05-19","tokens":0},{"date":"2026-05-20","tokens":0},{"date":"2026-05-21","tokens":0},{"date":"2026-05-22","tokens":0},{"date":"2026-05-23","tokens":0},{"date":"2026-05-24","tokens":0},{"date":"2026-05-25","tokens":0},{"date":"2026-05-26","tokens":0},{"date":"2026-05-27","tokens":0},{"date":"2026-05-28","tokens":0},{"date":"2026-05-29","tokens":0},{"date":"2026-05-30","tokens":0},{"date":"2026-05-31","tokens":0},{"date":"2026-06-01","tokens":0},{"date":"2026-06-02","tokens":0},{"date":"2026-06-03","tokens":0},{"date":"2026-06-04","tokens":0},{"date":"2026-06-05","tokens":0},{"date":"2026-06-06","tokens":0},{"date":"2026-06-07","tokens":0},{"date":"2026-06-08","tokens":15794573},{"date":"2026-06-09","tokens":758492929},{"date":"2026-06-10","tokens":211595427},{"date":"2026-06-11","tokens":1414359415},{"date":"2026-06-12","tokens":0},{"date":"2026-06-13","tokens":791362537},{"date":"2026-06-14","tokens":15571622},{"date":"2026-06-15","tokens":111369344},{"date":"2026-06-16","tokens":734728},{"date":"2026-06-17","tokens":0},{"date":"2026-06-18","tokens":8386875},{"date":"2026-06-19","tokens":3380706},{"date":"2026-06-20","tokens":0},{"date":"2026-06-21","tokens":0},{"date":"2026-06-22","tokens":237855329},{"date":"2026-06-23","tokens":441642620},{"date":"2026-06-24","tokens":27529879},{"date":"2026-06-25","tokens":0},{"date":"2026-06-26","tokens":0},{"date":"2026-06-27","tokens":0},{"date":"2026-06-28","tokens":0},{"date":"2026-06-29","tokens":0},{"date":"2026-06-30","tokens":0},{"date":"2026-07-01","tokens":3526501031},{"date":"2026-07-02","tokens":0},{"date":"2026-07-03","tokens":0},{"date":"2026-07-04","tokens":0},{"date":"2026-07-05","tokens":0},{"date":"2026-07-06","tokens":146455689},{"date":"2026-07-07","tokens":0},{"date":"2026-07-08","tokens":0},{"date":"2026-07-09","tokens":0},{"date":"2026-07-10","tokens":0},{"date":"2026-07-11","tokens":94675},{"date":"2026-07-12","tokens":0},{"date":"2026-07-13","tokens":0},{"date":"2026-07-14","tokens":2174233380},{"date":"2026-07-15","tokens":0},{"date":"2026-07-16","tokens":830255259},{"date":"2026-07-17","tokens":0},{"date":"2026-07-18","tokens":0},{"date":"2026-07-19","tokens":0},{"date":"2026-07-20","tokens":0},{"date":"2026-07-21","tokens":0},{"date":"2026-07-22","tokens":0},{"date":"2026-07-23","tokens":0},{"date":"2026-07-24","tokens":90865159},{"date":"2026-07-25","tokens":0},{"date":"2026-07-26","tokens":0},{"date":"2026-07-27","tokens":0},{"date":"2026-07-28","tokens":0},{"date":"2026-07-29","tokens":325996},{"date":"2026-07-30","tokens":0},{"date":"2026-07-31","tokens":0},{"date":"2026-08-01","tokens":0},{"date":"2026-08-02","tokens":0},{"date":"2026-08-03","tokens":27083369}],"modelSeries":{"gpt-5.5":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15794573,758492929,211595427,1409778637,0,791362537,15571622,111369344,734728,0,8386875,3380706,0,0,237855329,441642620,27529879,0,0,0,0,0,0,3526501031,0,0,0,0,146455689,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"gpt-5.6-terra":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2138772472,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"gpt-5.6-sol":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,94675,0,0,35460908,0,830255259,0,0,0,0,0,0,0,412305,0,0,0,0,325996,0,0,0,0,0],"claude-opus-4-8":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,46303032,0,0,0,0,0,0,0,0,0,27083369],"gpt-5.6-luna":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,43881805,0,0,0,0,0,0,0,0,0,0],"gpt-5.3-codex-spark":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4580778,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"claude-sonnet-4-6":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,147379,0,0,0,0,0,0,0,0,0,0],"deepseek-v4-pro":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,120638,0,0,0,0,0,0,0,0,0,0],"__other":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},"topModels":["gpt-5.5","gpt-5.6-terra","gpt-5.6-sol","claude-opus-4-8","gpt-5.6-luna","gpt-5.3-codex-spark","claude-sonnet-4-6","deepseek-v4-pro"],"dates":["2026-02-05","2026-02-06","2026-02-07","2026-02-08","2026-02-09","2026-02-10","2026-02-11","2026-02-12","2026-02-13","2026-02-14","2026-02-15","2026-02-16","2026-02-17","2026-02-18","2026-02-19","2026-02-20","2026-02-21","2026-02-22","2026-02-23","2026-02-24","2026-02-25","2026-02-26","2026-02-27","2026-02-28","2026-03-01","2026-03-02","2026-03-03","2026-03-04","2026-03-05","2026-03-06","2026-03-07","2026-03-08","2026-03-09","2026-03-10","2026-03-11","2026-03-12","2026-03-13","2026-03-14","2026-03-15","2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2026-03-21","2026-03-22","2026-03-23","2026-03-24","2026-03-25","2026-03-26","2026-03-27","2026-03-28","2026-03-29","2026-03-30","2026-03-31","2026-04-01","2026-04-02","2026-04-03","2026-04-04","2026-04-05","2026-04-06","2026-04-07","2026-04-08","2026-04-09","2026-04-10","2026-04-11","2026-04-12","2026-04-13","2026-04-14","2026-04-15","2026-04-16","2026-04-17","2026-04-18","2026-04-19","2026-04-20","2026-04-21","2026-04-22","2026-04-23","2026-04-24","2026-04-25","2026-04-26","2026-04-27","2026-04-28","2026-04-29","2026-04-30","2026-05-01","2026-05-02","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-05-07","2026-05-08","2026-05-09","2026-05-10","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15","2026-05-16","2026-05-17","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22","2026-05-23","2026-05-24","2026-05-25","2026-05-26","2026-05-27","2026-05-28","2026-05-29","2026-05-30","2026-05-31","2026-06-01","2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-06","2026-06-07","2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12","2026-06-13","2026-06-14","2026-06-15","2026-06-16","2026-06-17","2026-06-18","2026-06-19","2026-06-20","2026-06-21","2026-06-22","2026-06-23","2026-06-24","2026-06-25","2026-06-26","2026-06-27","2026-06-28","2026-06-29","2026-06-30","2026-07-01","2026-07-02","2026-07-03","2026-07-04","2026-07-05","2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10","2026-07-11","2026-07-12","2026-07-13","2026-07-14","2026-07-15","2026-07-16","2026-07-17","2026-07-18","2026-07-19","2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24","2026-07-25","2026-07-26","2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31","2026-08-01","2026-08-02","2026-08-03"]},"rankings":{"projects":[{"project":"games","tokens":7279396537,"sessions":31},{"project":"godot","tokens":3219455284,"sessions":21},{"project":"HereStandsDemon-SubduingGate","tokens":201087934,"sessions":6},{"project":"E//my/game/HereStandsDemon/SubduingGate","tokens":72410868,"sessions":3},{"project":"code-index-mcp","tokens":43881805,"sessions":1},{"project":"Fate'sDiceMakerNightSailThroughDisasterAbyss","tokens":15571622,"sessions":1},{"project":"E//my/game/godot/oriental/legion","tokens":1048392,"sessions":2},{"project":"plugin-install-superpowers-claude-plugins-official","tokens":842942,"sessions":1},{"project":"C//Users/Administrator","tokens":160986,"sessions":2},{"project":"C//Users/Administrator/Documents/Codex/2026/06/09/code/index/mcp","tokens":34172,"sessions":1}],"models":[{"model":"gpt-5.5","tokens":7706451926,"count":38,"usd":30825.81},{"model":"gpt-5.6-terra","tokens":2138772472,"count":5,"usd":10693.86},{"model":"gpt-5.6-sol","tokens":866549143,"count":16,"usd":4332.75},{"model":"claude-opus-4-8","tokens":73386401,"count":445,"usd":114.35},{"model":"gpt-5.6-luna","tokens":43881805,"count":1,"usd":219.41},{"model":"gpt-5.3-codex-spark","tokens":4580778,"count":1,"usd":18.32},{"model":"claude-sonnet-4-6","tokens":147379,"count":3,"usd":0.02},{"model":"deepseek-v4-pro","tokens":120638,"count":4,"usd":0.37},{"model":"\u003csynthetic>","tokens":0,"count":7,"usd":0}]}};</script>
+<script>'use strict';
+(function () {
+  const I18N = {
+    zh: {
+      refresh: '刷新', quota: '额度窗口', tokens: 'Token 总览', leadership: 'AI 领导力',
+      todayTasks: '今日任务', trend: 'Token 趋势（近 180 天）', heatmap: '每日活跃热力图',
+      modelRank: '模型排行', projectRank: '项目排行', recentTasks: '近期任务',
+      privacy: '所有数据均在本机解析，无任何上传。',
+      total: '累计 Token', input: '输入', cached: '缓存命中', output: '输出',
+      wool: '羊毛进度（API 等效价值）', noTask: '今日暂无活动任务',
+      reset: '重置', tierOf: '评级', consistency: '一致性', scale: '规模', concurrency: '并发', breadth: '广度',
+      sessions: '会话', updated: '更新于', estQuota: '（历史日志估算）', logPeak: '本机日志峰值',
+      todayTitle: '今日概览', todayTokens: '今日 Token', todayValue: '今日花费（等效价值）',
+      todayActive: '活跃项目', vsYest: '较昨日', noData: '无数据', avgPer: '每任务均值',
+    },
+    en: {
+      refresh: 'Refresh', quota: 'Quota Windows', tokens: 'Token Overview', leadership: 'AI Leadership',
+      todayTasks: "Today's Tasks", trend: 'Token Trend (180d)', heatmap: 'Daily Activity Heatmap',
+      modelRank: 'Model Ranking', projectRank: 'Project Ranking', recentTasks: 'Recent Tasks',
+      privacy: 'All data is parsed locally. Nothing is uploaded.',
+      total: 'Total Tokens', input: 'Input', cached: 'Cache Hit', output: 'Output',
+      wool: 'Wool Progress (API-equivalent value)', noTask: 'No active tasks today',
+      reset: 'resets', tierOf: 'Tier', consistency: 'Consistency', scale: 'Scale', concurrency: 'Concurrency', breadth: 'Breadth',
+      sessions: 'sessions', updated: 'Updated', estQuota: '(est. from logs)', logPeak: 'peak (local logs)',
+      todayTitle: 'Today Overview', todayTokens: "Today's Tokens", todayValue: "Today's Cost (equiv.)",
+      todayActive: 'Active Projects', vsYest: 'vs yesterday', noData: 'no data', avgPer: 'per task avg',
+    },
+  };
+  let LANG = 'zh';
+  const t = (k) => (I18N[LANG] && I18N[LANG][k]) || k;
+
+  // ---------- 设置 ----------
+  async function loadSettings() {
+    try {
+      const s = await fetch('/api/settings').then((r) => r.json());
+      if (s && typeof s === 'object') {
+        if (s.theme) document.documentElement.dataset.theme = s.theme;
+        if (s.appearance) document.documentElement.dataset.appearance = s.appearance;
+        if (s.lang) LANG = s.lang;
+      }
+    } catch (e) {}
+    syncControls();
+  }
+  function syncControls() {
+    document.getElementById('themeSel').value = document.documentElement.dataset.theme;
+    document.getElementById('btnAppearance').textContent =
+      document.documentElement.dataset.appearance === 'dark' ? '☀️' : '🌙';
+    applyI18n();
+  }
+  function persist() {
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        theme: document.documentElement.dataset.theme,
+        appearance: document.documentElement.dataset.appearance,
+        lang: LANG,
+      }),
+    }).catch(() => {});
+  }
+
+  function applyI18n() {
+    document.documentElement.lang = LANG;
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const k = el.getAttribute('data-i18n');
+      el.textContent = t(k);
+    });
+    document.getElementById('appTitle').textContent = 'codexU-web';
+    document.getElementById('appSub').textContent =
+      LANG === 'zh' ? 'Codex / Claude 用量可视化 · 纯本地' : 'Codex / Claude usage · local-only';
+  }
+
+  // ---------- 颜色工具 ----------
+  function getColors(n) {
+    const v = (name, fb) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fb;
+    const base = [v('--accent', '#0ea5a4'), v('--accent2', '#3b82f6'), v('--accent3', '#8b5cf6'), v('--accent4', '#f59e0b')];
+    const out = base.slice();
+    let i = 0;
+    while (out.length < n) {
+      const hue = (i * 47 + 200) % 360;
+      out.push(`hsl(${hue},65%,58%)`);
+      i++;
+    }
+    return out;
+  }
+
+  // ---------- 渲染 ----------
+  function fmt(n) {
+    if (n == null) return '0';
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return String(Math.round(n));
+  }
+
+  // 额度预警条：任一窗口用量超阈值时置顶提醒
+  const ALERT_THRESHOLD = 80;
+  function renderAlert(quota) {
+    const bar = document.getElementById('alertBar');
+    if (!quota.windows.length) { bar.hidden = true; return; }
+    const worst = quota.windows.slice().sort((a, b) => (b.usedPercent || 0) - (a.usedPercent || 0))[0];
+    const pct = worst.usedPercent || 0;
+    if (pct < ALERT_THRESHOLD) { bar.hidden = true; return; }
+    bar.hidden = false;
+    const level = pct >= 95 ? 'critical' : 'warn';
+    bar.className = 'alert-bar ' + level;
+    bar.innerHTML =
+      '<span class="alert-icon">⚠</span>' +
+      '<span class="alert-text">' +
+      (LANG === 'zh'
+        ? `<b>${worst.label}</b> 已用 <b>${Math.round(pct)}%</b>，额度即将耗尽${pct >= 95 ? '，请留意！' : '，建议控制用量'}` +
+          (worst.resetsAt && worst.resetsAt > Date.now() ? `（${t('reset')} ${new Date(worst.resetsAt).toLocaleString()}）` : '')
+        : `<b>${worst.label}</b> at <b>${Math.round(pct)}%</b> — quota nearly exhausted` +
+          (worst.resetsAt && worst.resetsAt > Date.now() ? ` (${t('reset')} ${new Date(worst.resetsAt).toLocaleString()})` : '')) +
+      '</span>';
+  }
+
+  // 今日概览：今日 token / 花费 / 任务 / 项目，与昨日对比
+  function renderToday(today) {
+    if (!today) return;
+    document.getElementById('todayDate').textContent = today.date;
+    document.getElementById('todayTokens').textContent = fmt(today.tokens);
+    document.getElementById('todayValue').textContent = '¥' + fmt(today.cny);
+    document.getElementById('todayTasksN').textContent = today.tasks;
+    document.getElementById('todayProjects').textContent = today.projects;
+
+    const deltaTokens = document.getElementById('todayTokensDelta');
+    const deltaValue = document.getElementById('todayValueDelta');
+    const diffTokens = today.tokens - today.yesterdayTokens;
+    const diffUsd = today.usd - today.yesterdayUsd;
+    const diffPctT = today.yesterdayTokens > 0 ? (diffTokens / today.yesterdayTokens) * 100 : null;
+    const diffPctU = today.yesterdayUsd > 0 ? (diffUsd / today.yesterdayUsd) * 100 : null;
+
+    const arrow = (v) => (v > 0 ? '▲' : v < 0 ? '▼' : '—');
+    const cls = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
+    if (diffPctT == null) {
+      deltaTokens.textContent = t('vsYest') + ' ' + t('noData');
+      deltaTokens.className = 'delta flat';
+    } else {
+      deltaTokens.textContent = `${t('vsYest')} ${arrow(diffTokens)} ${Math.abs(diffPctT).toFixed(0)}%`;
+      deltaTokens.className = 'delta ' + cls(diffTokens);
+    }
+    if (diffPctU == null) {
+      deltaValue.textContent = t('vsYest') + ' ' + t('noData');
+      deltaValue.className = 'delta flat';
+    } else {
+      deltaValue.textContent = `${t('vsYest')} ${arrow(diffUsd)} ${Math.abs(diffPctU).toFixed(0)}%`;
+      deltaValue.className = 'delta ' + cls(diffUsd);
+    }
+    document.getElementById('todayProjectsN').textContent = today.tasks;
+    document.getElementById('todayAvg').textContent =
+      `${t('avgPer')} ${fmt(today.tasks ? today.tokens / today.tasks : 0)}`;
+  }
+
+  function renderQuota(quota) {
+    const wrap = document.getElementById('quotaWrap');
+    const tag = document.getElementById('quotaTag');
+    wrap.innerHTML = '';
+    if (!quota.windows.length) {
+      tag.textContent = t('estQuota');
+      wrap.innerHTML = '<div class="empty">' + (LANG === 'zh' ? '未在本机日志中找到额度记录' : 'No quota records found in local logs') + '</div>';
+      return;
+    }
+    tag.textContent = t('logPeak');
+    quota.windows.forEach((w) => {
+      const pct = w.usedPercent == null ? 0 : w.usedPercent;
+      const div = document.createElement('div');
+      div.className = 'quota-item';
+      const cv = document.createElement('canvas');
+      cv.width = 110; cv.height = 110; cv.style.width = '110px'; cv.style.height = '110px';
+      div.appendChild(cv);
+      const label = document.createElement('div');
+      label.className = 'quota-label';
+      label.textContent = w.label;
+      div.appendChild(label);
+      if (w.resetsAt && w.resetsAt > Date.now()) {
+        const sub = document.createElement('div');
+        sub.className = 'quota-sub';
+        sub.textContent = t('reset') + ' ' + new Date(w.resetsAt).toLocaleString();
+        div.appendChild(sub);
+      }
+      if (w.limitName) {
+        const sub2 = document.createElement('div');
+        sub2.className = 'quota-sub';
+        sub2.textContent = w.limitName;
+        div.appendChild(sub2);
+      }
+      wrap.appendChild(div);
+      Charts.drawRing(cv, pct, getColors(1)[0]);
+    });
+  }
+
+  function renderTokens(tokens, value) {
+    const stats = [
+      [t('total'), fmt(tokens.total)],
+      [t('input'), fmt(tokens.input)],
+      [t('cached'), fmt(tokens.cached)],
+      [t('output'), fmt(tokens.output)],
+    ];
+    document.getElementById('tokenStats').innerHTML = stats
+      .map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`)
+      .join('');
+    document.getElementById('woolBox').innerHTML =
+      `<div class="k">${t('wool')}</div><div class="v">$${fmt(value.usd)}<span class="cny">≈ ¥${fmt(value.cny)}</span></div>`;
+  }
+
+  function renderLeadership(lead) {
+    const cv = document.getElementById('gauge');
+    Charts.drawGauge(cv, lead.score, getColors(1)[0]);
+    const subs = [
+      [t('consistency'), lead.subscores.consistency],
+      [t('scale'), lead.subscores.scale],
+      [t('concurrency'), lead.subscores.concurrency],
+      [t('breadth'), lead.subscores.breadth],
+    ];
+    const bars = subs
+      .map(
+        ([n, v]) =>
+          `<div class="subrow"><span class="name">${n}</span><span class="bar"><i style="width:${v}%"></i></span><span class="num">${v}</span></div>`
+      )
+      .join('');
+    document.getElementById('leadMeta').innerHTML =
+      `<div class="tier">${lead.tier}</div><div class="score">${t('tierOf')} · ${lead.score}/100</div>${bars}`;
+  }
+
+  function taskRow(ta) {
+    const div = document.createElement('div');
+    div.className = 'task';
+    const dot = document.createElement('span');
+    dot.className = 'dot ' + ta.source;
+    const body = document.createElement('div');
+    body.className = 'body';
+    body.innerHTML = `<div class="t">${escapeHtml(ta.title)}</div><div class="m">${ta.model} · ${escapeHtml(ta.project || '')}</div>`;
+    const tok = document.createElement('div');
+    tok.className = 'tok';
+    tok.textContent = fmt(ta.tokensUsed || ta.tokens || 0);
+    div.append(dot, body, tok);
+    return div;
+  }
+
+  function renderTasks(today, recent) {
+    const tl = document.getElementById('todayList');
+    document.getElementById('todayCount').textContent = today.length + ' ' + (LANG === 'zh' ? '项' : '');
+    tl.innerHTML = '';
+    if (!today.length) tl.innerHTML = '<div class="empty">' + t('noTask') + '</div>';
+    else today.slice(0, 12).forEach((x) => tl.appendChild(taskRow(x)));
+
+    const rl = document.getElementById('recentList');
+    rl.innerHTML = '';
+    if (!recent.length) rl.innerHTML = '<div class="empty">—</div>';
+    else recent.slice(0, 16).forEach((x) => rl.appendChild(taskRow(x)));
+  }
+
+  function renderTrend(trends) {
+    const names = trends.topModels.concat(['__other']);
+    const colors = getColors(names.length);
+    const series = names.map((m) => ({ name: m === '__other' ? (LANG === 'zh' ? '其他' : 'Other') : m, data: trends.modelSeries[m] || [] }));
+    Charts.drawArea(document.getElementById('area'), trends.dates, series, colors);
+    const leg = document.getElementById('trendLegend');
+    leg.innerHTML = series
+      .map((s, i) => `<span class="li"><span class="sw" style="background:${colors[i]}"></span>${escapeHtml(s.name)}</span>`)
+      .join('');
+  }
+
+  function renderHeat(daily) {
+    const arr = daily.map((d) => ({ date: d.date, v: d.tokens }));
+    Charts.drawHeatmap(document.getElementById('heat'), arr);
+  }
+
+  function renderRank(rank, elId, valKey, fmtFn) {
+    const el = document.getElementById(elId);
+    const max = Math.max(1, ...rank.map((r) => r[valKey] || 0));
+    el.innerHTML = rank
+      .map(
+        (r) =>
+          `<div class="row"><span class="name">${escapeHtml(r.model || r.project)}</span>` +
+          `<span class="mini"><i style="width:${((r[valKey] || 0) / max) * 100}%"></i></span>` +
+          `<span class="val">${fmtFn(r)}</span></div>`
+      )
+      .join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  // ---------- 数据拉取 ----------
+  async function refresh() {
+    try {
+      let d;
+      if (window.__BOOTSTRAP__) {
+        d = window.__BOOTSTRAP__;
+        window.__BOOTSTRAP__ = null;
+      } else {
+        d = await fetch('/api/summary').then((r) => r.json());
+      }
+      renderAlert(d.quota);
+      renderToday(d.today);
+      renderQuota(d.quota);
+      renderTokens(d.tokens, d.value);
+      renderLeadership(d.leadership);
+      renderTasks(d.tasks.today, d.tasks.recent);
+      renderTrend(d.trends);
+      renderHeat(d.trends.daily);
+      renderRank(d.rankings.models, 'modelRank', 'tokens', (r) => fmt(r.tokens) + (r.usd ? ` · $${fmt(r.usd)}` : ''));
+      renderRank(d.rankings.projects, 'projectRank', 'tokens', (r) => fmt(r.tokens) + ` · ${r.sessions}${LANG === 'zh' ? ' 会话' : ' ses'}`);
+      document.getElementById('updated').textContent = t('updated') + ' ' + new Date(d.generatedAt).toLocaleTimeString();
+      document.getElementById('footMeta').textContent =
+        `${d.sources.codex.threadCount} Codex ${LANG === 'zh' ? '会话' : 'threads'} · ${d.sources.claude.fileCount} Claude ${LANG === 'zh' ? '文件' : 'files'}`;
+    } catch (e) {
+      document.getElementById('updated').textContent = 'error: ' + e.message;
+    }
+  }
+
+  // ---------- 事件 ----------
+  document.getElementById('btnRefresh').onclick = () => refresh();
+  document.getElementById('themeSel').onchange = (e) => {
+    document.documentElement.dataset.theme = e.target.value;
+    persist();
+    refresh();
+  };
+  document.getElementById('btnAppearance').onclick = () => {
+    const cur = document.documentElement.dataset.appearance;
+    document.documentElement.dataset.appearance = cur === 'dark' ? 'light' : 'dark';
+    syncControls();
+    persist();
+    refresh();
+  };
+  document.getElementById('btnLang').onclick = () => {
+    LANG = LANG === 'zh' ? 'en' : 'zh';
+    syncControls();
+    persist();
+    refresh();
+  };
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) {
+      e.preventDefault();
+      refresh();
+    }
+  });
+
+  // ---------- 启动 ----------
+  (async function init() {
+    await loadSettings();
+    syncControls();
+    await refresh();
+    setInterval(refresh, 60000);
+  })();
+})();
+</script>
+</body>
+</html>

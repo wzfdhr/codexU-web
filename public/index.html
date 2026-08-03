@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="aurora" data-appearance="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>codexU-web · Codex / Claude 用量仪表盘</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">⚡</div>
+      <div>
+        <h1 id="appTitle">codexU-web</h1>
+        <p class="subtitle" id="appSub">Codex / Claude 用量可视化 · 纯本地</p>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="updated" id="updated">—</span>
+      <button class="btn" id="btnRefresh" title="刷新 (Ctrl+U)">↻ <span data-i18n="refresh">刷新</span></button>
+      <select id="themeSel" class="select" title="配色">
+        <option value="aurora">Aurora</option>
+        <option value="sunset">Sunset</option>
+        <option value="forest">Forest</option>
+        <option value="mono">Mono</option>
+        <option value="grape">Grape</option>
+        <option value="ocean">Ocean</option>
+      </select>
+      <button class="btn" id="btnAppearance" title="深浅色">🌓</button>
+      <button class="btn" id="btnLang" title="语言">中/EN</button>
+    </div>
+  </header>
+
+  <!-- 额度预警条：7天额度超80% 时显示 -->
+  <div class="alert-bar" id="alertBar" hidden></div>
+
+  <main class="grid">
+    <!-- 今日概览（个人使用核心） -->
+    <section class="card span3" id="cardToday">
+      <div class="card-head"><h2 data-i18n="todayTitle">今日概览</h2><span class="tag" id="todayDate"></span></div>
+      <div class="today-grid">
+        <div class="today-stat">
+          <div class="k" data-i18n="todayTokens">今日 Token</div>
+          <div class="v" id="todayTokens">—</div>
+          <div class="delta" id="todayTokensDelta"></div>
+        </div>
+        <div class="today-stat">
+          <div class="k" data-i18n="todayValue">今日花费（等效价值）</div>
+          <div class="v" id="todayValue">—</div>
+          <div class="delta" id="todayValueDelta"></div>
+        </div>
+        <div class="today-stat">
+          <div class="k" data-i18n="todayTasks">今日任务</div>
+          <div class="v" id="todayTasksN">—</div>
+          <div class="delta" id="todayProjectsN"></div>
+        </div>
+        <div class="today-stat">
+          <div class="k" data-i18n="todayActive">活跃项目</div>
+          <div class="v" id="todayProjects">—</div>
+          <div class="delta" id="todayAvg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 额度 -->
+    <section class="card span2" id="cardQuota">
+      <div class="card-head"><h2 data-i18n="quota">额度窗口</h2><span class="tag" id="quotaTag"></span></div>
+      <div class="quota-wrap" id="quotaWrap"></div>
+    </section>
+
+    <!-- Token 总览 -->
+    <section class="card" id="cardTokens">
+      <div class="card-head"><h2 data-i18n="tokens">Token 总览</h2></div>
+      <div class="stat-grid" id="tokenStats"></div>
+      <div class="wool" id="woolBox"></div>
+    </section>
+
+    <!-- AI 领导力 -->
+    <section class="card" id="cardLead">
+      <div class="card-head"><h2 data-i18n="leadership">AI 领导力</h2></div>
+      <div class="lead-wrap">
+        <canvas id="gauge" width="220" height="130"></canvas>
+        <div class="lead-meta" id="leadMeta"></div>
+      </div>
+    </section>
+
+    <!-- 今日任务 -->
+    <section class="card span2" id="cardToday">
+      <div class="card-head"><h2 data-i18n="todayTasks">今日任务</h2><span class="tag" id="todayCount"></span></div>
+      <div class="task-list" id="todayList"></div>
+    </section>
+
+    <!-- 趋势 -->
+    <section class="card span3" id="cardTrend">
+      <div class="card-head"><h2 data-i18n="trend">Token 趋势（近 180 天）</h2></div>
+      <div class="legend" id="trendLegend"></div>
+      <canvas id="area" height="240"></canvas>
+    </section>
+
+    <!-- 热力图 -->
+    <section class="card span3" id="cardHeat">
+      <div class="card-head"><h2 data-i18n="heatmap">每日活跃热力图</h2></div>
+      <canvas id="heat" height="160"></canvas>
+    </section>
+
+    <!-- 模型排行 -->
+    <section class="card" id="cardModels">
+      <div class="card-head"><h2 data-i18n="modelRank">模型排行</h2></div>
+      <div class="rank" id="modelRank"></div>
+    </section>
+
+    <!-- 项目排行 -->
+    <section class="card" id="cardProjects">
+      <div class="card-head"><h2 data-i18n="projectRank">项目排行</h2></div>
+      <div class="rank" id="projectRank"></div>
+    </section>
+
+    <!-- 近期任务 -->
+    <section class="card span2" id="cardRecent">
+      <div class="card-head"><h2 data-i18n="recentTasks">近期任务</h2></div>
+      <div class="task-list" id="recentList"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span data-i18n="privacy">所有数据均在本机解析，无任何上传。</span>
+    <span id="footMeta"></span>
+  </footer>
+
+  <script src="/charts.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
