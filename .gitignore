@@ -8,8 +8,8 @@ build/icon.png
 # 生成文件（可随时重新生成）
 public/standalone.html
 
-# 本机个性化设置（不共享）
-data/settings.json
+# 本机个性化数据（不共享）
+data/
 
 # 日志与临时文件
 *.log

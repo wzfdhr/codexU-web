@@ -79,13 +79,13 @@
     <section class="card" id="cardLead">
       <div class="card-head"><h2 data-i18n="leadership">AI 领导力</h2></div>
       <div class="lead-wrap">
-        <canvas id="gauge" width="220" height="130"></canvas>
+        <canvas id="gauge" width="220" height="130" style="width:220px"></canvas>
         <div class="lead-meta" id="leadMeta"></div>
       </div>
     </section>
 
     <!-- 今日任务 -->
-    <section class="card span2" id="cardToday">
+    <section class="card span2" id="cardTodayTasks">
       <div class="card-head"><h2 data-i18n="todayTasks">今日任务</h2><span class="tag" id="todayCount"></span></div>
       <div class="task-list" id="todayList"></div>
     </section>
@@ -103,6 +103,23 @@
       <canvas id="heat" height="160"></canvas>
     </section>
 
+    <!-- 成就 · 连击 -->
+    <section class="card span2" id="cardAchieve">
+      <div class="card-head"><h2 data-i18n="achieve">成就 · 连击</h2><span class="tag" id="achCount">0/0</span></div>
+      <div class="ach-wrap">
+        <div class="streak-box" id="streakBox"></div>
+        <div class="badge-grid" id="badgeGrid"></div>
+      </div>
+    </section>
+
+    <!-- AI 生物钟 -->
+    <section class="card" id="cardClock">
+      <div class="card-head"><h2 data-i18n="bioclock">AI 生物钟</h2></div>
+      <canvas id="clock"></canvas>
+      <div class="clock-type" id="clockType"></div>
+      <div class="clock-peak" id="clockPeak"></div>
+    </section>
+
     <!-- 模型排行 -->
     <section class="card" id="cardModels">
       <div class="card-head"><h2 data-i18n="modelRank">模型排行</h2></div>
@@ -115,12 +132,30 @@
       <div class="rank" id="projectRank"></div>
     </section>
 
+    <!-- AI 战报 -->
+    <section class="card" id="cardWeekly">
+      <div class="card-head"><h2 data-i18n="weekly">AI 战报</h2></div>
+      <div class="weekly-preview" id="weeklyPreview"></div>
+      <button class="btn wide" id="btnPoster">生成本周战报</button>
+    </section>
+
     <!-- 近期任务 -->
     <section class="card span2" id="cardRecent">
       <div class="card-head"><h2 data-i18n="recentTasks">近期任务</h2></div>
       <div class="task-list" id="recentList"></div>
     </section>
   </main>
+
+  <!-- 战报海报弹窗 -->
+  <div class="poster-modal" id="posterModal" hidden>
+    <div class="poster-box">
+      <canvas id="poster"></canvas>
+      <div class="poster-actions">
+        <button class="btn" id="btnPosterSave">保存图片</button>
+        <button class="btn" id="btnPosterClose">关闭</button>
+      </div>
+    </div>
+  </div>
 
   <footer class="foot">
     <span data-i18n="privacy">所有数据均在本机解析，无任何上传。</span>

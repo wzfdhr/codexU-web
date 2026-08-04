@@ -38,9 +38,15 @@
 - **Token 总览**：累计 / 输入 / 缓存命中 / 输出，按 API 单价估算「羊毛进度」价值（＄ / ¥）。
 - **AI 领导力**：基于近 28 天活跃一致性、规模、并发、广度计算的 0–100 评分与七级称号。
 - **今日 / 近期任务**：聚合 Codex 与 Claude Code 的本机会话。
-- **趋势**：近 180 天 Token 面积图（按模型）、每日活跃日历热力图。
+- **趋势**：近 180 天 Token 面积图（按模型）、每日活跃日历热力图，均支持鼠标悬停查看每日/每格明细。
 - **排行**：模型排行（含估值）、项目排行。
 - **个性化**：6 套配色、中英界面、深浅色外观，设置本地持久化。
+
+### 原创玩法（codexU-web 独有）
+- **成就 · 连击**：16 枚成就徽章（Token 里程碑 / 连击 / 生物钟人格 / 羊毛价值 / 广度），连击火焰随连续活跃天数升级（动画 + 光晕）；新解锁触发 toast + 彩带庆祝。
+- **AI 生物钟**：24h 环形表盘展示各时段 Token 强度，自动归类人格（早起型 / 稳健型 / 夜猫子型 / 修仙型）并标出黄金窗口，支持悬停查看每小时明细。
+- **AI 战报**：一键生成 1080×1440 周报海报（本周 Token / 等效价值 / 活跃天数 / 主战场 / 个人称号），可保存 PNG 分享。
+- **燃烧速率预警**：持久化额度百分比快照，用真实测量的消耗速率预测各窗口耗尽时刻，额度卡内实时倒计时（重置后自动失效）。
 
 ## 🚀 快速开始
 
@@ -86,12 +92,13 @@ codexU-web/
   main.js              # Electron 主进程（托盘/自启/通知/窗口）
   server.js            # HTTP 服务 + 静态资源 + /api/*
   start.bat / stop.bat # Web 版一键启动/停止
-  lib/                 # paths / prices / db(sql.js) / codex / claude / leadership / aggregate
+  lib/                 # paths / prices / db(sql.js) / codex / claude / leadership / stats / aggregate
   public/              # index.html / styles.css / app.js / charts.js / standalone.html
   docs/screenshot.svg  # 预览示意图（README 引用）
   build/icon.png       # 桌面应用图标
   scripts/make_icon.py # 图标生成脚本（Python，零依赖）
   data/settings.json   # 用户个性化设置
+  data/burn_history.json # 额度燃烧速率快照（本机自动生成）
   dist/                # electron-builder 打包产物（生成后存在）
 ```
 
